@@ -1,0 +1,20 @@
+# 仅覆盖与主题默认值不同的项，其余见 themes/blowfish/config/_default/params.toml
+colorScheme = "one-light"
+defaultAppearance = "dark"
+autoSwitchAppearance = false # 不跟随系统亮暗，始终默认暗色
+enableCodeCopy = true
+
+[homepage]
+  # 布局沿用主题默认的 profile
+  showRecent = true
+  showRecentItems = 10
+  showMoreLink = true
+  showMoreLinkDest = "posts/"
+
+[article]
+  showTableOfContents = true
+  showTaxonomies = true
+  showPagination = false # 文章页底部不显示上一篇/下一篇
+
+[header]
+  layout = "fixed-fill-blur"
