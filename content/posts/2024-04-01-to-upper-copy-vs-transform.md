@@ -20,35 +20,9 @@ C++ 的 string 库并没有 upper 方法，一般用 `boost::to_upper` / `boost:
 而 `boost::to_upper_copy` 却并不接收 `const char*` 的输入，定义如下：
 
 ```
-......
-        //! Convert to upper case
-
-        /*!
-
-            \overload
-
-        */
-
-        template<typename SequenceT>
-
-        inline SequenceT to_upper_copy(
-
-            const SequenceT& Input,
-
-            const std::locale& Loc=std::locale())
-
-        {
-
-            return ::boost::algorithm::detail::transform_range_copy<SequenceT>(
-
-                Input,
-
-                ::boost::algorithm::detail::to_upperF<
-
-                    typename range_value<SequenceT>::type >(Loc));
-
-        }
-......
+template<typename SequenceT>
+SequenceT to_upper_copy(const SequenceT& Input,
+                        const std::locale& Loc = std::locale());
 ```
 
 原因：
@@ -64,75 +38,54 @@ C++ 的 string 库并没有 upper 方法，一般用 `boost::to_upper` / `boost:
 经 reviewer 提醒，应该使用 `transform` 方法，其定义非常直观：
 
 ```
-......
-  /**
+/**
+    *  @brief Perform an operation on a sequence.
+    *  @ingroup mutating_algorithms
+    *  @param  __first     An input iterator.
+    *  @param  __last      An input iterator.
+    *  @param  __result    An output iterator.
+    *  @param  __unary_op  A unary operator.
+    *  @return   An output iterator equal to @p __result+(__last-__first).
+    *
+    *  Applies the operator to each element in the input range and assigns
+    *  the results to successive elements of the output sequence.
+    *  Evaluates @p *(__result+N)=unary_op(*(__first+N)) for each @c N in the
+    *  range @p [0,__last-__first).
+    *
+    *  @p unary_op must not alter its argument.
+    */
 
-   *  @brief Perform an operation on a sequence.
+template<typename _InputIterator,
+         typename _OutputIterator,
+         typename _UnaryOperation>
 
-   *  @ingroup mutating_algorithms
+    _GLIBCXX20_CONSTEXPR
 
-   *  @param  __first     An input iterator.
+    _OutputIterator
 
-   *  @param  __last      An input iterator.
+    transform(_InputIterator __first,
+              _InputIterator __last,
+              _OutputIterator __result,
+              _UnaryOperation __unary_op) {
 
-   *  @param  __result    An output iterator.
+        // concept requirements
 
-   *  @param  __unary_op  A unary operator.
+        __glibcxx_function_requires(_InputIteratorConcept<_InputIterator>)
 
-   *  @return   An output iterator equal to @p __result+(__last-__first).
+        __glibcxx_function_requires(_OutputIteratorConcept<_OutputIterator,
 
-   *
+        // "the type returned by a _UnaryOperation"
 
-   *  Applies the operator to each element in the input range and assigns
+        __typeof__(__unary_op(*__first))>)
 
-   *  the results to successive elements of the output sequence.
+        __glibcxx_requires_valid_range(__first, __last);
 
-   *  Evaluates @p *(__result+N)=unary_op(*(__first+N)) for each @c N in the
+        for (; __first != __last; ++__first, (void)++__result)
 
-   *  range @p [0,__last-__first).
+            *__result = __unary_op(*__first);
 
-   *
-
-   *  @p unary_op must not alter its argument.
-
-  */
-
-  template<typename _InputIterator, typename _OutputIterator,
-
-     typename _UnaryOperation>
-
-    _GLIBCXX20_CONSTEXPR
-
-    _OutputIterator
-
-    transform(_InputIterator __first, _InputIterator __last,
-
-        _OutputIterator __result, _UnaryOperation __unary_op)
-
-    {
-
-      // concept requirements
-
-      __glibcxx_function_requires(_InputIteratorConcept<_InputIterator>)
-
-      __glibcxx_function_requires(_OutputIteratorConcept<_OutputIterator,
-
-      // "the type returned by a _UnaryOperation"
-
-      __typeof__(__unary_op(*__first))>)
-
-      __glibcxx_requires_valid_range(__first, __last);
-
-
-
-      for (; __first != __last; ++__first, (void)++__result)
-
-  *__result = __unary_op(*__first);
-
-      return __result;
-
-    }
-......
+        return __result;
+    }
 ```
 
 但是它有一个问题：不检查 `__result` 是否有效，若 `__result` 指向一个无法扩容的容器（如固定大小的 `char buffer[]`），将存在越界风险。
