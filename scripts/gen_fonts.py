@@ -1,8 +1,11 @@
 """生成 assets/css/fonts.css，并把用到的字体文件复制到 static/fonts/。
 
-字体取自 Fontsource 的 npm 包（需要 npm），版本见 FONTS。
-用法：python3 scripts/gen_fonts.py
+西文取自 Fontsource 的 npm 包（需要 npm），版本见 FONTS。
+中文使用华为官方原始 TTF，不转换格式、不修改或裁剪字体文件。
+用法：python3 scripts/gen_fonts.py [--harmony-zip /path/to/HarmonyOS-Sans.zip]
+不传 --harmony-zip 时使用 static/fonts/harmonyos-sans-sc/ 中已提交的字体。
 """
+import argparse
 import json
 import re
 import shutil
@@ -11,26 +14,17 @@ import tarfile
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# 中文字体只认领这些码位，拉丁字母、符号与 emoji 留给字体栈里的其它字体
-CJK = [
-    (0x2E80, 0x2FDF),    # 部首
-    (0x2FF0, 0x2FFF),    # 汉字结构描述符
-    (0x3000, 0x303F),    # 中日韩符号与标点
-    (0x3040, 0x30FF),    # 平假名、片假名
-    (0x3100, 0x312F),    # 注音
-    (0x3190, 0x31FF),    # 汉文训读、注音扩展、笔画、片假名扩展
-    (0x3200, 0x33FF),    # 带圈字符、兼容字符
-    (0x3400, 0x4DBF),    # 扩展 A
-    (0x4E00, 0x9FFF),    # 基本汉字
-    (0xF900, 0xFAFF),    # 兼容汉字
-    (0xFE10, 0xFE1F),    # 竖排标点
-    (0xFE30, 0xFE4F),    # 兼容标点
-    (0xFF00, 0xFFEF),    # 全角、半角字符
-    (0x20000, 0x3FFFF),  # 扩展 B 及以后
-]
+# 仅在 CSS 中限定中日韩码位，字体文件本身保持原样。
+# 拉丁字母、通用符号与 emoji 继续使用原来的字体。
+CJK_UNICODE_RANGE = (
+    "U+2e80-2fdf,U+2ff0-2fff,U+3000-303f,U+3040-30ff,U+3100-312f,"
+    "U+3190-31ff,U+3200-33ff,U+3400-4dbf,U+4e00-9fff,U+f900-faff,"
+    "U+fe10-fe1f,U+fe30-fe4f,U+ff00-ffef,U+20000-3ffff"
+)
 
 
 @dataclass
@@ -40,47 +34,60 @@ class Font:
     css: list[str]  # 包内要用的 CSS，文件名决定可变轴与正斜体
     family: str
     slug: str  # static/fonts/ 下的目录名
-    only: list[tuple[int, int]] | None = None  # 只保留这些码位
 
 
 FONTS = [
     # opsz 版带光学尺寸轴：正文与大标题自动用不同字形
     Font("@fontsource-variable/source-serif-4", "5.3.0", ["opsz.css", "opsz-italic.css"],
          "Source Serif 4", "source-serif-4"),
-    Font("@fontsource-variable/noto-serif-sc", "5.3.0", ["wght.css"],
-         "Noto Serif SC CJK", "noto-serif-sc", only=CJK),
     Font("@fontsource-variable/cascadia-code", "5.3.0", ["wght.css", "wght-italic.css"],
          "Cascadia Code", "cascadia-code"),
 ]
 
-
-def parse_ranges(s):
-    ranges = []
-    for r in s.split(","):
-        a, _, b = r.strip()[2:].partition("-")
-        ranges.append((int(a, 16), int(b or a, 16)))
-    return ranges
+HARMONY_SOURCE = "https://developer.huawei.com/images/download/general/HarmonyOS-Sans.zip"
+HARMONY_SLUG = "harmonyos-sans-sc"
+# 中文 600–900 共用原始 Bold，避免为标题再下载一份约 8 MiB 的字体。
+# 只影响这个中文 font-face；西文字体仍使用自身的可变字重。
+HARMONY_WEIGHTS = [("Regular", "400"), ("Medium", "500"), ("Bold", "600 900")]
 
 
-def clip(ranges, allowed):
-    """取交集并合并相邻区间。"""
-    hits = sorted(
-        (max(a, x), min(b, y))
-        for a, b in ranges
-        for x, y in allowed
-        if max(a, x) <= min(b, y)
-    )
-    merged = []
-    for a, b in hits:
-        if merged and a <= merged[-1][1] + 1:
-            merged[-1] = (merged[-1][0], max(merged[-1][1], b))
-        else:
-            merged.append((a, b))
-    return merged
+def render_face(properties):
+    return "@font-face {\n" + "".join(
+        f"  {key}: {value};\n" for key, value in properties.items()
+    ) + "}\n"
 
 
-def format_ranges(ranges):
-    return ",".join(f"U+{a:x}" if a == b else f"U+{a:x}-{b:x}" for a, b in ranges)
+def import_harmony_fonts(archive):
+    """从官方压缩包复制原始文件，不执行字体格式转换或子集化。"""
+    dst = ROOT / "static/fonts" / HARMONY_SLUG
+    names = [f"HarmonyOS_Sans_SC_{style}.ttf" for style, _ in HARMONY_WEIGHTS]
+    with ZipFile(archive) as package:
+        prefix = "HarmonyOS Sans/HarmonyOS_Sans_SC/"
+        # 先读取完整组文件，避免压缩包缺项时只写入部分字体。
+        files = {name: package.read(prefix + name) for name in names + ["LICENSE.txt"]}
+    dst.mkdir(parents=True, exist_ok=True)
+    for name, data in files.items():
+        (dst / name).write_bytes(data)
+
+
+def harmony_faces():
+    dst = ROOT / "static/fonts" / HARMONY_SLUG
+    names = [f"HarmonyOS_Sans_SC_{style}.ttf" for style, _ in HARMONY_WEIGHTS]
+    for name in names + ["LICENSE.txt"]:
+        if not (dst / name).is_file():
+            raise FileNotFoundError(f"缺少 {dst / name}，请通过 --harmony-zip 导入官方字体包")
+    for style, weight in HARMONY_WEIGHTS:
+        name = f"HarmonyOS_Sans_SC_{style}.ttf"
+        local_name = "HarmonyOS_Sans_SC" if style == "Regular" else f"HarmonyOS_Sans_SC_{style}"
+        yield render_face({
+            "font-family": "'HarmonyOS Sans SC CJK'",
+            "font-style": "normal",
+            "font-display": "swap",
+            "font-weight": weight,
+            "src": (f"local('{local_name}'), "
+                    f"url(../fonts/{HARMONY_SLUG}/{name}) format('truetype')"),
+            "unicode-range": CJK_UNICODE_RANGE,
+        })
 
 
 def fetch(font, tmp):
@@ -104,25 +111,29 @@ def font_faces(font, pkg):
     for css in font.css:
         for body in re.findall(r"@font-face \{(.*?)\}", (pkg / css).read_text(), re.S):
             face = dict(re.findall(r"([\w-]+): ([^;]+);", body))
-            if font.only:
-                ranges = clip(parse_ranges(face["unicode-range"]), font.only)
-                if not ranges:
-                    continue
-                face["unicode-range"] = format_ranges(ranges)
             file = re.search(r"url\(\./files/([^)]+)\)", face["src"]).group(1)
             shutil.copy2(pkg / "files" / file, dst)
             face["font-family"] = f"'{font.family}'"
             face["src"] = face["src"].replace("./files/", f"../fonts/{font.slug}/")
-            yield "@font-face {\n" + "".join(f"  {k}: {v};\n" for k, v in face.items()) + "}\n"
+            yield render_face(face)
 
 
 def main():
-    header = ["/* 由 scripts/gen_fonts.py 生成，请勿手改。字体均为 SIL Open Font License 1.1。"]
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--harmony-zip", type=Path, help="华为官方 HarmonyOS-Sans.zip")
+    args = parser.parse_args()
+    if args.harmony_zip:
+        import_harmony_fonts(args.harmony_zip)
+    harmony = list(harmony_faces())
+    header = ["/* 由 scripts/gen_fonts.py 生成，请勿手改。西文字体为 SIL Open Font License 1.1。"]
     header += [f" * {f.family}: {f.package}@{f.version}" for f in FONTS]
+    header += [f" * HarmonyOS Sans SC CJK: {HARMONY_SOURCE}",
+               " * HarmonyOS Sans Fonts License Agreement；原始 TTF，许可见字体目录。"]
     blocks = ["\n".join(header) + "\n */\n"]
     with tempfile.TemporaryDirectory() as tmp:
         for font in FONTS:
             blocks += font_faces(font, fetch(font, Path(tmp)))
+    blocks += harmony
     (ROOT / "assets/css/fonts.css").write_text("\n".join(blocks))
 
 
