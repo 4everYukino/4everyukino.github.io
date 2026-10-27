@@ -1,12 +1,12 @@
 /* 主题会自动把本文件拼接在 main.css 之后。@font-face 定义见 fonts.css。 */
 
 :root {
-  /* 主题的正文字体变量叫 --font-sans，这里实际放的是衬线体：
-     英文 Source Serif 4，中文思源宋体（只覆盖中日韩字符），后面是加载完成前的备选 */
-  --font-sans: "Source Serif 4", "Noto Serif SC CJK", Georgia, "Noto Serif CJK SC",
-    "Source Han Serif SC", "Songti SC", SimSun, serif, "Apple Color Emoji", "Segoe UI Emoji",
+  /* 英文沿用 Source Serif 4，HarmonyOS Sans SC CJK 只认领中日韩码位。
+     Georgia 保留英文回退，中文加载前使用系统黑体。 */
+  --font-sans: "Source Serif 4", "HarmonyOS Sans SC CJK", Georgia, "PingFang SC",
+    "Microsoft YaHei", "Noto Sans CJK SC", sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
     "Segoe UI Symbol", "Noto Color Emoji";
-  --font-mono: "Cascadia Code", "Noto Serif SC CJK", ui-monospace, SFMono-Regular, Menlo, Monaco,
+  --font-mono: "Cascadia Code", "HarmonyOS Sans SC CJK", ui-monospace, SFMono-Regular, Menlo, Monaco,
     Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
