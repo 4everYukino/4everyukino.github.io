@@ -1,9 +1,6 @@
-"""生成 assets/css/fonts.css，并把用到的字体文件复制到 static/fonts/。
+"""生成网页字体声明并复制 Fontsource 字体。
 
-西文取自 Fontsource 的 npm 包（需要 npm），版本见 FONTS。
-中文使用华为官方原始 TTF，不转换格式、不修改或裁剪字体文件。
-用法：python3 scripts/gen_fonts.py [--harmony-zip /path/to/HarmonyOS-Sans.zip]
-不传 --harmony-zip 时使用 static/fonts/harmonyos-sans-sc/ 中已提交的字体。
+中文字体保留上游文件，导入方式见 scripts/README.md。
 """
 import argparse
 import json
@@ -18,8 +15,7 @@ from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# 仅在 CSS 中限定中日韩码位，字体文件本身保持原样。
-# 拉丁字母、通用符号与 emoji 继续使用原来的字体。
+# 中文字体仅声明 CJK 字符，避免覆盖西文字体。
 CJK_UNICODE_RANGE = (
     "U+2e80-2fdf,U+2ff0-2fff,U+3000-303f,U+3040-30ff,U+3100-312f,"
     "U+3190-31ff,U+3200-33ff,U+3400-4dbf,U+4e00-9fff,U+f900-faff,"
@@ -31,9 +27,9 @@ CJK_UNICODE_RANGE = (
 class Font:
     package: str
     version: str
-    css: list[str]  # 包内要用的 CSS，文件名决定可变轴与正斜体
+    css: list[str]
     family: str
-    slug: str  # static/fonts/ 下的目录名
+    slug: str
 
 
 FONTS = [
@@ -46,9 +42,16 @@ FONTS = [
 
 HARMONY_SOURCE = "https://developer.huawei.com/images/download/general/HarmonyOS-Sans.zip"
 HARMONY_SLUG = "harmonyos-sans-sc"
-# 中文 600–900 共用原始 Bold，避免为标题再下载一份约 8 MiB 的字体。
-# 只影响这个中文 font-face；西文字体仍使用自身的可变字重。
+# 复用 Bold 覆盖较大字重，避免额外下载中文字体。
 HARMONY_WEIGHTS = [("Regular", "400"), ("Medium", "500"), ("Bold", "600 900")]
+
+SOURCE_HAN_REVISION = "7889f11bf31170b5d092a083b357c8c8130f89e0"
+SOURCE_HAN_SLUG = "source-han-serif-cn"
+SOURCE_HAN_FILE = "SourceHanSerifCN-VF.otf.woff2"
+SOURCE_HAN_SOURCE = (
+    "https://raw.githubusercontent.com/adobe-fonts/source-han-serif/"
+    f"{SOURCE_HAN_REVISION}/Variable/WOFF2/OTF/Subset/{SOURCE_HAN_FILE}"
+)
 
 
 def render_face(properties):
@@ -58,7 +61,6 @@ def render_face(properties):
 
 
 def import_harmony_fonts(archive):
-    """从官方压缩包复制原始文件，不执行字体格式转换或子集化。"""
     dst = ROOT / "static/fonts" / HARMONY_SLUG
     names = [f"HarmonyOS_Sans_SC_{style}.ttf" for style, _ in HARMONY_WEIGHTS]
     with ZipFile(archive) as package:
@@ -90,8 +92,22 @@ def harmony_faces():
         })
 
 
+def source_han_faces():
+    dst = ROOT / "static/fonts" / SOURCE_HAN_SLUG
+    for name in (SOURCE_HAN_FILE, "LICENSE.txt"):
+        if not (dst / name).is_file():
+            raise FileNotFoundError(f"缺少 {dst / name}，下载方式见 scripts/README.md")
+    yield render_face({
+        "font-family": "'Source Han Serif CN CJK'",
+        "font-style": "normal",
+        "font-display": "swap",
+        "font-weight": "250 900",
+        "src": f"url(../fonts/{SOURCE_HAN_SLUG}/{SOURCE_HAN_FILE}) format('woff2')",
+        "unicode-range": CJK_UNICODE_RANGE,
+    })
+
+
 def fetch(font, tmp):
-    """npm pack 下载并解压，返回包目录。"""
     out = subprocess.run(
         ["npm", "pack", "--json", f"{font.package}@{font.version}"],
         cwd=tmp, check=True, capture_output=True, text=True,
@@ -102,14 +118,13 @@ def fetch(font, tmp):
 
 
 def font_faces(font, pkg):
-    """改写包内的 @font-face 并复制所需字体文件，逐条返回 CSS。"""
     dst = ROOT / "static/fonts" / font.slug
     shutil.rmtree(dst, ignore_errors=True)
     dst.mkdir(parents=True)
     shutil.copy2(pkg / "LICENSE", dst)
 
     for css in font.css:
-        for body in re.findall(r"@font-face \{(.*?)\}", (pkg / css).read_text(), re.S):
+        for body in re.findall(r"@font-face \{(.*?)\}", (pkg / css).read_text(encoding="utf-8"), re.S):
             face = dict(re.findall(r"([\w-]+): ([^;]+);", body))
             file = re.search(r"url\(\./files/([^)]+)\)", face["src"]).group(1)
             shutil.copy2(pkg / "files" / file, dst)
@@ -124,17 +139,18 @@ def main():
     args = parser.parse_args()
     if args.harmony_zip:
         import_harmony_fonts(args.harmony_zip)
-    harmony = list(harmony_faces())
-    header = ["/* 由 scripts/gen_fonts.py 生成，请勿手改。西文字体为 SIL Open Font License 1.1。"]
+    chinese = list(harmony_faces()) + list(source_han_faces())
+    header = ["/* 由 scripts/gen_fonts.py 生成，请勿手改。西文字体与思源宋体为 SIL Open Font License 1.1。"]
     header += [f" * {f.family}: {f.package}@{f.version}" for f in FONTS]
     header += [f" * HarmonyOS Sans SC CJK: {HARMONY_SOURCE}",
-               " * HarmonyOS Sans Fonts License Agreement；原始 TTF，许可见字体目录。"]
+               " * HarmonyOS Sans Fonts License Agreement；原始 TTF，许可见字体目录。",
+               f" * Source Han Serif CN CJK: {SOURCE_HAN_SOURCE}"]
     blocks = ["\n".join(header) + "\n */\n"]
     with tempfile.TemporaryDirectory() as tmp:
         for font in FONTS:
             blocks += font_faces(font, fetch(font, Path(tmp)))
-    blocks += harmony
-    (ROOT / "assets/css/fonts.css").write_text("\n".join(blocks))
+    blocks += chinese
+    (ROOT / "assets/css/fonts.css").write_text("\n".join(blocks), encoding="utf-8")
 
 
 if __name__ == "__main__":

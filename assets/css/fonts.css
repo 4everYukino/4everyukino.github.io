@@ -1,8 +1,9 @@
-/* 由 scripts/gen_fonts.py 生成，请勿手改。西文字体为 SIL Open Font License 1.1。
+/* 由 scripts/gen_fonts.py 生成，请勿手改。西文字体与思源宋体为 SIL Open Font License 1.1。
  * Source Serif 4: @fontsource-variable/source-serif-4@5.3.0
  * Cascadia Code: @fontsource-variable/cascadia-code@5.3.0
  * HarmonyOS Sans SC CJK: https://developer.huawei.com/images/download/general/HarmonyOS-Sans.zip
  * HarmonyOS Sans Fonts License Agreement；原始 TTF，许可见字体目录。
+ * Source Han Serif CN CJK: https://raw.githubusercontent.com/adobe-fonts/source-han-serif/7889f11bf31170b5d092a083b357c8c8130f89e0/Variable/WOFF2/OTF/Subset/SourceHanSerifCN-VF.otf.woff2
  */
 
 @font-face {
@@ -317,5 +318,14 @@
   font-display: swap;
   font-weight: 600 900;
   src: local('HarmonyOS_Sans_SC_Bold'), url(../fonts/harmonyos-sans-sc/HarmonyOS_Sans_SC_Bold.ttf) format('truetype');
+  unicode-range: U+2e80-2fdf,U+2ff0-2fff,U+3000-303f,U+3040-30ff,U+3100-312f,U+3190-31ff,U+3200-33ff,U+3400-4dbf,U+4e00-9fff,U+f900-faff,U+fe10-fe1f,U+fe30-fe4f,U+ff00-ffef,U+20000-3ffff;
+}
+
+@font-face {
+  font-family: 'Source Han Serif CN CJK';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 250 900;
+  src: url(../fonts/source-han-serif-cn/SourceHanSerifCN-VF.otf.woff2) format('woff2');
   unicode-range: U+2e80-2fdf,U+2ff0-2fff,U+3000-303f,U+3040-30ff,U+3100-312f,U+3190-31ff,U+3200-33ff,U+3400-4dbf,U+4e00-9fff,U+f900-faff,U+fe10-fe1f,U+fe30-fe4f,U+ff00-ffef,U+20000-3ffff;
 }
