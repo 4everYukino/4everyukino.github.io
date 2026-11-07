@@ -1,0 +1,43 @@
+{{ define "main" }}
+  <div class="tag-directory">
+    <header class="mt-5">
+      <h1 class="mt-5 text-4xl font-extrabold text-neutral-900 dark:text-neutral">标签</h1>
+    </header>
+
+    {{ $groups := slice }}
+    {{ range .Data.Terms.Alphabetical }}
+      {{ $posts := (where .Pages "Section" "posts").ByDate.Reverse }}
+      {{ if $posts }}
+        {{ $groups = $groups | append (dict "term" .Page "posts" $posts "latest" (index $posts 0).Date) }}
+      {{ end }}
+    {{ end }}
+
+    {{ range sort $groups "latest" "desc" }}
+      <section class="tag-directory-group" aria-label="{{ .term.LinkTitle }}">
+        <div class="tag-directory-topic">
+          <h2><a href="{{ .term.RelPermalink }}">{{ .term.LinkTitle }}</a></h2>
+          <div class="tag-directory-topic-meta">
+            <span>{{ len .posts }} 篇</span>
+            <a href="{{ .term.RelPermalink }}" aria-label="查看「{{ .term.LinkTitle }}」下的全部文章">
+              查看全部 <span aria-hidden="true">→</span>
+            </a>
+          </div>
+        </div>
+        <ul class="tag-directory-posts">
+          {{ range first 3 .posts }}
+            <li>
+              <a class="tag-directory-post-link" href="{{ .RelPermalink }}">
+                <h3>{{ .LinkTitle }}</h3>
+                {{ if not .Date.IsZero }}
+                  <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "2006-01-02" }}</time>
+                {{ end }}
+              </a>
+            </li>
+          {{ end }}
+        </ul>
+      </section>
+    {{ else }}
+      <p class="tag-directory-empty">暂时还没有标签。</p>
+    {{ end }}
+  </div>
+{{ end }}

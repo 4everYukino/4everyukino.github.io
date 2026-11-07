@@ -1,36 +1,145 @@
-/* 主题会自动把本文件拼接在 main.css 之后。@font-face 定义见 fonts.css。 */
-
 :root {
-  /* 英文沿用 Source Serif 4，HarmonyOS Sans SC CJK 只认领中日韩码位。
-     Georgia 保留英文回退，中文加载前使用系统黑体。 */
   --font-sans: "Source Serif 4", "HarmonyOS Sans SC CJK", Georgia, "PingFang SC",
     "Microsoft YaHei", "Noto Sans CJK SC", sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
     "Segoe UI Symbol", "Noto Color Emoji";
   --font-mono: "Cascadia Code", "HarmonyOS Sans SC CJK", ui-monospace, SFMono-Regular, Menlo, Monaco,
     Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-heading: "Source Serif 4", "Source Han Serif CN CJK", Georgia, "Songti SC", SimSun,
+    "HarmonyOS Sans SC CJK", serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji";
 }
 
-/* 文章正文 18px、字重 500，主题默认的 16px / 400 读起来太细。
-   行高（1.75）、段距和正文里的小标题都以 em 为单位，会随字号等比放大 */
+h1, h2, h3, h4, h5, h6,
+#search-results .font-bold {
+  font-family: var(--font-heading);
+}
+
 .article-content {
   font-size: 1.125rem;
-  font-weight: 500;
+  font-weight: 400;
+  line-height: 1.85;
 }
-/* 加粗比正文重 200，与主题默认（400 → 600）的差距一致 */
 .article-content :is(strong, b) {
   font-weight: 700;
 }
-/* 暗色下正文提亮一档（neutral-300 → 200），对比度 11.1 → 13.8；亮色沿用主题默认的 neutral-700 */
 .dark .article-content {
   color: rgba(var(--color-neutral-200), 1);
 }
 
-/* 文章列表按年分组时，年与年之间加分隔线。
-   年份标题是列表 section 的直接子元素，文章标题则嵌在链接里，不会被选中 */
 section.space-y-10 > h2:not(:first-child) {
   padding-top: 2rem;
   border-top: 1px solid rgba(var(--color-neutral-200), 1);
 }
 .dark section.space-y-10 > h2:not(:first-child) {
   border-top-color: rgba(var(--color-neutral-700), 1);
+}
+
+.tag-directory {
+  --tag-rule: rgba(var(--color-neutral-200), 1);
+  --tag-muted: rgba(var(--color-neutral-500), 1);
+  --tag-accent: rgba(var(--color-primary-600), 1);
+  --tag-hover: rgba(var(--color-neutral-100), 0.7);
+  padding-bottom: 2rem;
+}
+.dark .tag-directory {
+  --tag-rule: rgba(var(--color-neutral-700), 0.75);
+  --tag-muted: rgba(var(--color-neutral-400), 1);
+  --tag-accent: rgba(var(--color-primary-400), 1);
+  --tag-hover: rgba(var(--color-neutral-700), 0.3);
+}
+.tag-directory-empty {
+  margin-top: 0.75rem;
+  color: var(--tag-muted);
+  font-size: 0.9375rem;
+}
+.tag-directory > header {
+  margin-bottom: 2rem;
+}
+.tag-directory-group {
+  display: grid;
+  grid-template-columns: 10rem minmax(0, 1fr);
+  gap: 2rem;
+  padding: 1.75rem 0;
+  border-top: 1px solid var(--tag-rule);
+}
+.tag-directory-topic h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.tag-directory-topic-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+  color: var(--tag-muted);
+  font-size: 0.8125rem;
+}
+.tag-directory-posts {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tag-directory-posts li + li {
+  margin-top: 0.25rem;
+}
+.tag-directory-post-link {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 0.125rem 1rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 1rem;
+  line-height: 1.75;
+  transition: background-color 150ms ease;
+}
+.tag-directory-post-link h3 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.tag-directory time {
+  color: var(--tag-muted);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tag-directory-post-link:hover {
+  background-color: var(--tag-hover);
+}
+.tag-directory-topic a:hover,
+.tag-directory-post-link:hover h3 {
+  color: var(--tag-accent);
+}
+.tag-directory a:focus-visible {
+  outline: 2px solid var(--tag-accent);
+  outline-offset: 3px;
+}
+@media (max-width: 639px) {
+  .tag-directory-group {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+    padding: 1.5rem 0;
+  }
+  .tag-directory-topic {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.25rem 1rem;
+  }
+  .tag-directory-topic-meta {
+    margin-top: 0;
+  }
+  .tag-directory-post-link {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tag-directory-post-link {
+    transition: none;
+  }
 }
