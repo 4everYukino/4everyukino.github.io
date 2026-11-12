@@ -2,6 +2,7 @@
 colorScheme = "one-light"
 defaultAppearance = "dark"
 autoSwitchAppearance = false # 不跟随系统亮暗，始终默认暗色
+enableSearch = false
 enableCodeCopy = true
 
 [homepage]
